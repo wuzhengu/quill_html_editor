@@ -51,6 +51,8 @@ class _MyAppState extends State<MyApp> {
 
   bool _hasFocus = false;
 
+  var textController = TextEditingController();
+
   @override
   void initState() {
     controller = QuillEditorController();
@@ -76,8 +78,20 @@ class _MyAppState extends State<MyApp> {
       child: Scaffold(
         backgroundColor: Colors.white,
         resizeToAvoidBottomInset: true,
-        body: Column(
+        body: ListView(
           children: [
+            buildButtons(),
+            Container(
+              padding: EdgeInsets.all(10),
+              child: TextField(
+                maxLines: 5,
+                controller: textController,
+                decoration: InputDecoration(
+                  contentPadding: EdgeInsets.all(10),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
             ToolBar(
               toolBarColor: _toolbarColor,
               padding: const EdgeInsets.all(8),
@@ -114,7 +128,7 @@ class _MyAppState extends State<MyApp> {
                     )),
               ],
             ),
-            Expanded(
+            Container(
               child: QuillHtmlEditor(
                 text: "<h1>Hello</h1>This is a quill html editor example 😊",
                 hintText: 'Hint text goes here',
@@ -146,8 +160,8 @@ class _MyAppState extends State<MyApp> {
                 },
                 onTextChanged: (text) => debugPrint('widget text change $text'),
                 onEditorCreated: () {
-                  debugPrint('Editor has been loaded');
                   setHtmlText('Testing text on load');
+                  getHtmlText();
                 },
                 onEditorResized: (height) => debugPrint('Editor resized $height'),
                 onSelectionChanged: (sel) => debugPrint('index ${sel.index}, range ${sel.length}'),
@@ -155,102 +169,87 @@ class _MyAppState extends State<MyApp> {
             ),
           ],
         ),
-        bottomNavigationBar: Container(
-          width: double.maxFinite,
-          color: _toolbarColor,
-          padding: const EdgeInsets.all(8),
-          child: Wrap(
-            children: [
-              textButton(
-                  text: 'Set Text',
-                  onPressed: () {
-                    setHtmlText('This text is set by you 🫵');
-                  }),
-              textButton(
-                  text: 'Get Text',
-                  onPressed: () {
-                    getHtmlText();
-                  }),
-              textButton(
-                  text: 'Insert Video',
-                  onPressed: () {
-                    ////insert
-                    insertVideoURL('https://www.youtube.com/watch?v=4AoFA19gbLo');
-                    insertVideoURL('https://vimeo.com/440421754');
-                    insertVideoURL(
-                        'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4');
-                  }),
-              textButton(
-                  text: 'Insert Image',
-                  onPressed: () {
-                    insertNetworkImage('https://i.imgur.com/0DVAOec.gif');
-                  }),
-              textButton(
-                  text: 'Insert Index',
-                  onPressed: () {
-                    insertHtmlText("This text is set by the insertText method", index: 10);
-                  }),
-              textButton(
-                  text: 'Undo',
-                  onPressed: () {
-                    controller.undo();
-                  }),
-              textButton(
-                  text: 'Redo',
-                  onPressed: () {
-                    controller.redo();
-                  }),
-              textButton(
-                  text: 'Clear History',
-                  onPressed: () async {
-                    controller.clearHistory();
-                  }),
-              textButton(
-                  text: 'Clear Editor',
-                  onPressed: () {
-                    controller.clear();
-                  }),
-              textButton(
-                  text: 'Get Delta',
-                  onPressed: () async {
-                    var delta = await controller.getDelta();
-                    debugPrint('delta');
-                    debugPrint(jsonEncode(delta));
-                  }),
-              textButton(
-                  text: 'Set Delta',
-                  onPressed: () {
-                    final Map<dynamic, dynamic> deltaMap = {
-                      "ops": [
-                        {
-                          "insert": {
-                            "video":
-                                "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
-                          }
-                        },
-                        {
-                          "insert": {"video": "https://www.youtube.com/embed/4AoFA19gbLo"}
-                        },
-                        {"insert": "Hello"},
-                        {
-                          "attributes": {"header": 1},
-                          "insert": "\n"
-                        },
-                        {"insert": "You just set the Delta text 😊\n"}
-                      ]
-                    };
-                    controller.setDelta(deltaMap);
-                  }),
-            ],
-          ),
-        ),
+      ),
+    );
+  }
+
+  buildButtons() {
+    return Container(
+      height: 60,
+      color: _toolbarColor,
+      padding: const EdgeInsets.all(5),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          textButton(
+              text: 'Set Text',
+              onPressed: () {
+                var text = textController.text.trim();
+                if (text.isEmpty || !text.startsWith("[")) {
+                  setHtmlText(textController.text);
+                } else {
+                  controller.setDelta({'ops': jsonDecode(text)});
+                }
+              }),
+          textButton(
+              text: 'Get Text',
+              onPressed: () {
+                getHtmlText();
+              }),
+          textButton(
+              text: 'Get Delta',
+              onPressed: () async {
+                var delta = await controller.getDelta();
+                textController.text = JsonEncoder.withIndent('  ').convert(delta['ops']);
+                debugPrint(textController.text);
+              }),
+          textButton(
+              text: 'Insert Video',
+              onPressed: () {
+                ////insert
+                insertVideoURL('https://www.youtube.com/watch?v=4AoFA19gbLo');
+                insertVideoURL('https://vimeo.com/440421754');
+                insertVideoURL(
+                    'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4');
+              }),
+          textButton(
+              text: 'Insert Image',
+              onPressed: () {
+                insertNetworkImage('https://i.imgur.com/0DVAOec.gif');
+              }),
+          textButton(
+              text: 'Insert Index',
+              onPressed: () {
+                insertHtmlText("This text is set by the insertText method", index: 10);
+              }),
+          textButton(
+              text: 'Undo',
+              onPressed: () {
+                controller.undo();
+              }),
+          textButton(
+              text: 'Redo',
+              onPressed: () {
+                controller.redo();
+              }),
+          textButton(
+              text: 'Clear History',
+              onPressed: () async {
+                controller.clearHistory();
+              }),
+          textButton(
+              text: 'Clear Editor',
+              onPressed: () {
+                controller.clear();
+              }),
+        ],
       ),
     );
   }
 
   Widget textButton({required String text, required VoidCallback onPressed}) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
+    return Container(
+      padding: const EdgeInsets.all(5.0),
       child: MaterialButton(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           color: _toolbarIconColor,
@@ -265,7 +264,7 @@ class _MyAppState extends State<MyApp> {
   ///[getHtmlText] to get the html text from editor
   void getHtmlText() async {
     String? htmlText = await controller.getText();
-    debugPrint(htmlText);
+    debugPrint(textController.text = htmlText);
   }
 
   ///[setHtmlText] to set the html text to editor
